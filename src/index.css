@@ -1,0 +1,102 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+  /* Fondo dorado animado */
+  background: linear-gradient(135deg, #3b2a00 0%, #8a6f1a 25%, #d4af37 50%, #8a6f1a 75%, #3b2a00 100%);
+  background-size: 400% 400%;
+  animation: goldShimmer 16s ease infinite;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* Destellos sobre el fondo */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 10% 20%, rgba(255, 255, 255, 0.9) 0, rgba(255,255,255,0) 60%),
+    radial-gradient(1.5px 1.5px at 30% 70%, rgba(255, 255, 255, 0.8) 0, rgba(255,255,255,0) 60%),
+    radial-gradient(2px 2px at 60% 40%, rgba(255, 255, 255, 0.85) 0, rgba(255,255,255,0) 60%),
+    radial-gradient(1.5px 1.5px at 80% 80%, rgba(255, 255, 255, 0.75) 0, rgba(255,255,255,0) 60%),
+    radial-gradient(2px 2px at 50% 10%, rgba(255, 255, 255, 0.8) 0, rgba(255,255,255,0) 60%);
+  opacity: 0.45;
+  animation: twinkle 6s ease-in-out infinite;
+}
+
+@keyframes goldShimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.6; }
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    /* Mantener fondo dorado también en modo claro */
+    background: linear-gradient(135deg, #3b2a00 0%, #8a6f1a 25%, #d4af37 50%, #8a6f1a 75%, #3b2a00 100%);
+    background-size: 400% 400%;
+    animation: goldShimmer 16s ease infinite;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
