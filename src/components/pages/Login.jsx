@@ -10,12 +10,9 @@ import {
   Grid,
   Link
 } from '@mui/material';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
 import { useAuth } from '../../context/AuthContext';
-import { DEMO_USERS } from '../../utils/demoUsers';
+import { authApi } from '../../api/xano';
+import { formatAxiosError } from '../../utils/http';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -25,10 +22,10 @@ const Login = () => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    name: '',
-    role: 'client'
+    name: ''
   });
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
@@ -37,30 +34,71 @@ const Login = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-
-    const target = formData.role === 'admin' ? DEMO_USERS.admin : DEMO_USERS.client;
-
-    // Validar correo y contraseña según rol seleccionado
-    const emailOk = formData.email.trim().toLowerCase() === target.email;
-    const passOk = formData.password === target.password;
-    if (!emailOk || !passOk) {
-      setError('Correo o contraseña inválidos para el rol seleccionado.');
+    const now = Date.now();
+    const last = Number(localStorage.getItem('lastAuthAttempt') || 0);
+    if (now - last < 2500) {
+      setError('Demasiadas solicitudes. Intenta en unos segundos.');
       return;
     }
+    localStorage.setItem('lastAuthAttempt', String(now));
+    setSubmitting(true);
+    try {
+      if (isLogin) {
+        const resp = await authApi.post('/auth/login', {
+          email: formData.email,
+          password: formData.password,
+        });
+        const token = resp?.data?.token || resp?.data?.authToken || resp?.data;
+        if (!token) {
+          throw new Error('Token no recibido desde Xano');
+        }
+        localStorage.setItem('authToken', token);
+        const meResp = await authApi.get('/auth/me');
+        const d = meResp?.data || {};
+        const name = d.name || d.full_name || d.username || d.email || 'Usuario';
+        const email = (d.email || formData.email || '').toLowerCase();
+        const domainAdmin = email.endsWith('@studiobarber.cl');
+        const role = domainAdmin ? 'admin' : (d.role || (d.is_admin ? 'admin' : 'client'));
+        login({ name, email, role });
+        const from = role === 'admin' ? '/admin' : (location.state?.from || '/');
+        navigate(from, { replace: true });
+        return;
+      }
 
-    // Autenticación aceptada: usar datos del usuario demo
-    login({
-      name: target.name,
-      email: target.email,
-      role: target.role
-    });
-    
-    // Redirigir inmediatamente: si venías de una ruta protegida, vuelve allí; si no, a inicio
-    const from = location.state?.from || '/';
-    navigate(from, { replace: true });
+      const emailNorm = formData.email.trim().toLowerCase();
+      const allowed = emailNorm.endsWith('@gmail.com') || emailNorm.endsWith('@duocuc.cl') || emailNorm.endsWith('@studiobarber.cl');
+      if (!allowed) {
+        setError('El correo debe ser @gmail.com o @duocuc.cl');
+        return;
+      }
+      await authApi.post('/auth/signup', {
+        email: formData.email,
+        password: formData.password,
+        name: formData.name,
+      });
+      const loginResp = await authApi.post('/auth/login', {
+        email: formData.email,
+        password: formData.password,
+      });
+      const token = loginResp?.data?.token || loginResp?.data?.authToken || loginResp?.data;
+      if (token) localStorage.setItem('authToken', token);
+      const meResp = await authApi.get('/auth/me');
+      const d = meResp?.data || {};
+      const name = d.name || d.full_name || d.username || d.email || formData.name || 'Usuario';
+      const email = (d.email || formData.email || '').toLowerCase();
+      const domainAdmin = email.endsWith('@studiobarber.cl');
+      const role = domainAdmin ? 'admin' : (d.role || (d.is_admin ? 'admin' : 'client'));
+      login({ name, email, role });
+      const from = role === 'admin' ? '/admin' : (location.state?.from || '/');
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(`No se pudo procesar. ${formatAxiosError(err)}`);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const toggleMode = () => {
@@ -109,22 +147,7 @@ const Login = () => {
                 onChange={handleChange}
               />
             </Grid>
-            <Grid item xs={12}>
-              <FormControl fullWidth>
-                <InputLabel id="role-select-label">Rol</InputLabel>
-                <Select
-                  labelId="role-select-label"
-                  label="Rol"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                >
-                  <MenuItem value="client">Cliente</MenuItem>
-                  <MenuItem value="admin">Admin</MenuItem>
-                </Select>
-              </FormControl>
         </Grid>
-      </Grid>
       <Button
         type="submit"
         fullWidth
@@ -137,9 +160,10 @@ const Login = () => {
               color: 'black',
               fontWeight: 'bold'
             }}
+            disabled={submitting}
         >
           {isLogin ? 'Iniciar Sesión' : 'Registrarse'}
-        </Button>
+      </Button>
         {error && (
           <Typography color="error" align="center" sx={{ mt: 1 }}>
             {error}

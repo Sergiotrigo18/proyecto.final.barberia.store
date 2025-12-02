@@ -17,25 +17,7 @@ const UsersAdmin = () => {
     setError(null);
     setInfo('');
     try {
-      // 1) Primero intenta /auth/me (existe en tu grupo Auth)
-      try {
-        const meResp = await authApi.get('/auth/me');
-        const d = meResp?.data || {};
-        const me = {
-          id: d.id,
-          name: d.name || d.full_name || d.username || '',
-          email: d.email || '',
-          blocked: Boolean(d.blocked ?? d.is_blocked ?? false),
-        };
-        if (me.id) {
-          setUsers([me]);
-          setCanBlock(false); // En /auth/me no gestionamos bloqueo
-          setInfo('Mostrando el usuario del token (/auth/me). Para listar usuarios, crea GET /user en Xano.');
-          return;
-        }
-      } catch {}
-
-      // 2) Si existe GET /user, úsalo para listar usuarios reales
+      // 1) Intentar GET /user para listar usuarios
       try {
         const listResp = await authApi.get('/user');
         const items = Array.isArray(listResp.data) ? listResp.data : (listResp.data?.items || []);
@@ -55,7 +37,25 @@ const UsersAdmin = () => {
         console.warn('GET /user no disponible aún:', e);
       }
 
-      // 3) Si estás en desarrollo y no hay endpoints, usa datos demo
+      // 2) Si /user no está, intentar /auth/me
+      try {
+        const meResp = await authApi.get('/auth/me');
+        const d = meResp?.data || {};
+        const me = {
+          id: d.id,
+          name: d.name || d.full_name || d.username || '',
+          email: d.email || '',
+          blocked: Boolean(d.blocked ?? d.is_blocked ?? false),
+        };
+        if (me.id) {
+          setUsers([me]);
+          setCanBlock(false);
+          setInfo('Mostrando el usuario del token (/auth/me).');
+          return;
+        }
+      } catch {}
+
+      // 3) Fallback demo
       const demo = [
         { id: 1, name: 'Admin Demo', email: 'admin@demo.com', blocked: false },
         { id: 2, name: 'Cliente Demo', email: 'cliente@demo.com', blocked: false },
@@ -63,14 +63,14 @@ const UsersAdmin = () => {
       if (IS_DEV) {
         setUsers(demo);
         setCanBlock(false);
-        setInfo('Modo demo activo: usando lista de usuarios simulada. Configura GET /user en Xano para datos reales.');
+        setInfo('Modo demo activo: usando lista simulada.');
         return;
       }
 
-      // 4) En producción, si no existe /auth/me ni /user, muestra demo y aviso
+      // 4) Producción sin endpoints
       setUsers(demo);
       setCanBlock(false);
-      setInfo('No hay endpoints disponibles para listar usuarios. Mostrando datos demo. Crea GET /user en Xano.');
+      setInfo('Sin endpoints disponibles para listar usuarios. Mostrando datos demo.');
     } finally {
       setLoading(false);
     }

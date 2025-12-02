@@ -24,6 +24,27 @@ const getAuthToken = () => localStorage.getItem('authToken');
   });
 });
 
+const installRateLimitRetry = (client) => {
+  client.interceptors.response.use(
+    (resp) => resp,
+    async (err) => {
+      const status = err?.response?.status;
+      const cfg = err?.config || {};
+      if (status === 429 && !cfg.__retry) {
+        cfg.__retry = true;
+        const h = err?.response?.headers || {};
+        const ra = Number(h['retry-after']) || Number(h['x-ratelimit-reset']) || 2000;
+        await new Promise((r) => setTimeout(r, ra));
+        return client(cfg);
+      }
+      return Promise.reject(err);
+    }
+  );
+};
+
+installRateLimitRetry(storeApi);
+installRateLimitRetry(authApi);
+
 // --------- PRODUCT ---------
 export const getProducts = (params = {}) => storeApi.get('/product', { params });
 export const getProduct = (product_id) => storeApi.get(`/product/${product_id}`);
